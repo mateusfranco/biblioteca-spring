@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: demo
+
+server:
+  servlet:
+    context-path: /api
+
+springdoc:
+  swagger-ui:
+    use-root-path: true
