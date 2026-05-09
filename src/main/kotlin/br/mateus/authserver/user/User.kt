@@ -1,5 +1,6 @@
 package br.mateus.authserver.user
 
+import br.mateus.authserver.roles.Role
 import jakarta.persistence.*
 
 @Entity
@@ -11,9 +12,14 @@ class User(
     @Column(nullable = false)
     var email: String,
 
-    @Column(nullable = false)
     var password: String,
-
-    @Column(nullable = false)
     var name: String = "",
+
+    @ManyToMany
+    @JoinTable(
+        name = "UserRole",
+        joinColumns = [JoinColumn(name = "idUser")],
+        inverseJoinColumns = [JoinColumn(name = "idRole")]
+    )
+    var roles: MutableSet<Role> = mutableSetOf()
 )
