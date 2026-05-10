@@ -1,10 +1,17 @@
 package br.mateus.authserver.user
 
+import br.mateus.authserver.exceptions.ForbiddenException
+import br.mateus.authserver.security.UserToken
 import br.mateus.authserver.user.requests.CreateUserRequest
+import br.mateus.authserver.user.requests.LoginRequest
+import br.mateus.authserver.user.requests.UpdateUserRequest
 import br.mateus.authserver.user.responses.UserResponse
+import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.*
 
 @RestController
@@ -14,45 +21,67 @@ class UserController(val service: UserService) {
     fun list(
         @RequestParam sortDir: String? = null,
         @RequestParam role: String? = null
-    ): ResponseEntity<*> = if (role != null) {
-        val users = service.findByRole(role)
-        ResponseEntity.ok(users.map { UserResponse(it) })
-    } else {
-        val dir = SortDir.find(sortDir ?: "ASC")
-        val users = service.findAll(dir)
-        ResponseEntity.ok(users.map { UserResponse(it) })
+    ): ResponseEntity<List<UserResponse>> {
+        val users = if (role != null) service.findByRole(role)
+        else service.findAll(SortDir.find(sortDir ?: "ASC"))
+        return users
+            .map { UserResponse(it) }
+            .let { ResponseEntity.ok(it) }
     }
 
     @PostMapping
     fun insert(
-        @Valid @RequestBody request: CreateUserRequest
-    ): ResponseEntity<UserResponse> {
-        val user = service.insert(request.toUser())
-        return ResponseEntity.status(HttpStatus.CREATED).body(UserResponse(user))
-    }
+        @Valid @RequestBody user: CreateUserRequest
+    ) = service.insert(user.toUser())
+        .let { UserResponse(it) }
+        .let { ResponseEntity.status(HttpStatus.CREATED).body(it) }
+
+    @PostMapping("/login")
+    fun login(
+        @Valid @RequestBody login: LoginRequest
+    ) = service.login(login.email!!, login.password!!)
 
     @GetMapping("/{id}")
     fun getById(
         @PathVariable id: Long
+    ) = service.findById(id)
+        .let { UserResponse(it) }
+        .let { ResponseEntity.ok(it) }
+
+    @PreAuthorize("permitAll()")
+    @SecurityRequirement(name = "jwt-auth")
+    @PatchMapping("/{id}")
+    fun updateUser(
+        @PathVariable id: Long,
+        @Valid @RequestBody user: UpdateUserRequest,
+        auth: Authentication
     ): ResponseEntity<UserResponse> {
-        val user = service.findById(id)
-        return ResponseEntity.ok(UserResponse(user))
+        val token = auth.principal as? UserToken ?: throw ForbiddenException()
+        if (token.id != id && !token.isAdmin) {
+            throw ForbiddenException("Update is not allowed")
+        }
+        return service.update(id, user.name!!)
+            ?.let { UserResponse(it) }
+            ?.let { ResponseEntity.ok(it) }
+            ?: ResponseEntity.noContent().build()
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "jwt-auth")
     @DeleteMapping("/{id}")
     fun delete(
         @PathVariable id: Long
-    ): ResponseEntity<Void> {
-        service.delete(id)
-        return ResponseEntity.ok().build()
-    }
+    ) = service.delete(id)
 
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "jwt-auth")
     @PutMapping("/{id}/roles/{role}")
     fun grant(
         @PathVariable id: Long,
         @PathVariable role: String
-    ): ResponseEntity<Void> {
-        service.addRole(id, role)
-        return ResponseEntity.ok().build()
-    }
+    ): ResponseEntity<Void> = service.addRole(id, role)
+        .let {
+            if (it) ResponseEntity.ok().build()
+            else ResponseEntity.noContent().build()
+        }
 }

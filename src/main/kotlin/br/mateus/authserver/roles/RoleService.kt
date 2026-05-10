@@ -9,7 +9,7 @@ class RoleService(val repository: RoleRepository) {
     fun insert(role: Role): Role {
         role.name = role.name.uppercase()
         if (repository.findByName(role.name) != null) {
-            throw BadRequestException("Role ${role.name} already exists")
+            throw BadRequestException("Role ${role.name} already exists.")
         }
         return repository.save(role)
     }

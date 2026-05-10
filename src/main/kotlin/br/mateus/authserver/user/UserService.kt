@@ -2,7 +2,10 @@ package br.mateus.authserver.user
 
 import br.mateus.authserver.exceptions.BadRequestException
 import br.mateus.authserver.exceptions.NotFoundException
+import br.mateus.authserver.exceptions.UnauthorizedException
 import br.mateus.authserver.roles.RoleRepository
+import br.mateus.authserver.security.Jwt
+import br.mateus.authserver.user.responses.LoginResponse
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Sort
 import org.springframework.data.repository.findByIdOrNull
@@ -11,7 +14,8 @@ import org.springframework.stereotype.Service
 @Service
 class UserService(
     val repository: UserRepository,
-    val roleRepository: RoleRepository
+    val roleRepository: RoleRepository,
+    val jwt: Jwt
 ) {
     private val logger = LoggerFactory.getLogger(UserService::class.java)
 
@@ -58,5 +62,28 @@ class UserService(
         logger.info("Adding role $upperRole to user with id: $id")
         repository.save(user)
         return true
+    }
+
+    fun update(id: Long, name: String): User? {
+        val user = findById(id)
+        if (user.name == name) {
+            return null
+        }
+        user.name = name
+        repository.save(user)
+        return user
+    }
+
+    fun login(email: String, password: String): LoginResponse {
+        val user = repository.findByEmail(email) ?: throw UnauthorizedException("User $email not found")
+
+        if (user.password != password)
+            throw UnauthorizedException("Invalid password")
+
+        logger.info("User ${user.id} is logged in")
+        return LoginResponse(
+            token = jwt.createToken(user),
+            user = br.mateus.authserver.user.responses.UserResponse(user)
+        )
     }
 }
