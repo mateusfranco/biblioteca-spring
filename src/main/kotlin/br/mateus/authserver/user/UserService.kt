@@ -6,6 +6,7 @@ import br.mateus.authserver.exceptions.UnauthorizedException
 import br.mateus.authserver.roles.RoleRepository
 import br.mateus.authserver.security.Jwt
 import br.mateus.authserver.user.responses.LoginResponse
+import br.mateus.authserver.user.responses.UserResponse
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Sort
 import org.springframework.data.repository.findByIdOrNull
@@ -83,7 +84,7 @@ class UserService(
         logger.info("User ${user.id} is logged in")
         return LoginResponse(
             token = jwt.createToken(user),
-            user = br.mateus.authserver.user.responses.UserResponse(user)
+            user = UserResponse(user)
         )
     }
 }

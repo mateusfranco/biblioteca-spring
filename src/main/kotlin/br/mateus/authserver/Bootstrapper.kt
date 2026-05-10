@@ -14,19 +14,17 @@ class Bootstrapper(
     val userRepository: UserRepository
 ) : ApplicationListener<ContextRefreshedEvent> {
     override fun onApplicationEvent(event: ContextRefreshedEvent) {
-        //Cria os papéis ADMIN e PREMIUM, se não existirem
         val adminRole =
             rolesRepository.findByName("ADMIN") ?: rolesRepository
                 .save(Role(name = "ADMIN", description = "System Administrator"))
-        rolesRepository.findByName("PREMIUM") ?: rolesRepository
-            .save(Role(name = "PREMIUM", description = "Premium user"))
+        rolesRepository.findByName("USER") ?: rolesRepository
+            .save(Role(name = "USER", description = "Regular user"))
 
-        //Cria um admin se não existir nenhum
         if (userRepository.findByRole("ADMIN").isEmpty()) {
             val admin = User(
-                email = "admin@authserver.com",
+                email = "admin@gmail.com",
                 password = "admin",
-                name = "Auth Server Administrator",
+                name = "adminTeste",
             )
             admin.roles.add(adminRole)
             userRepository.save(admin)

@@ -2,7 +2,9 @@ package br.mateus.authserver.emprestimo
 
 import br.mateus.authserver.emprestimo.requests.CreateEmprestimoRequest
 import br.mateus.authserver.emprestimo.responses.EmprestimoResponse
+import br.mateus.authserver.exceptions.ForbiddenException
 import br.mateus.authserver.security.UserToken
+import br.mateus.authserver.user.UserService
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -17,7 +19,7 @@ import org.springframework.web.bind.annotation.*
 @SecurityRequirement(name = "jwt-auth")
 class EmprestimoController(
     val service: EmprestimoService,
-    val userService: br.mateus.authserver.user.UserService
+    val userService: UserService
 ) {
 
     @PostMapping
@@ -42,7 +44,7 @@ class EmprestimoController(
 
         // Validar que é o próprio aluno ou admin
         if (token.id != emprestimo.aluno.id && !token.isAdmin) {
-            throw br.mateus.authserver.exceptions.ForbiddenException("Você não pode devolver empréstimos de outros alunos")
+            throw ForbiddenException("Você não pode devolver empréstimos de outros alunos")
         }
 
         val devolvido = service.devolver(id)
@@ -84,7 +86,7 @@ class EmprestimoController(
         
         // Validar que é o próprio aluno ou admin
         if (token.id != emprestimo.aluno.id && !token.isAdmin) {
-            throw br.mateus.authserver.exceptions.ForbiddenException("Você não pode visualizar empréstimos de outros alunos")
+            throw ForbiddenException("Você não pode visualizar empréstimos de outros alunos")
         }
         
         return ResponseEntity.ok(EmprestimoResponse(emprestimo))
