@@ -1,12 +1,16 @@
 package br.mateus.authserver.user
 
 import br.mateus.authserver.roles.RoleRepository
+import br.mateus.authserver.security.Jwt
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito.given
+import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
+import org.mockito.kotlin.verify
 import java.util.Optional
 
 @ExtendWith(MockitoExtension::class)
@@ -18,7 +22,10 @@ class UserServiceTest {
     @Mock
     private lateinit var roleRepository: RoleRepository
 
-    @org.mockito.InjectMocks
+    @Mock
+    private lateinit var jwt: Jwt
+
+    @InjectMocks
     private lateinit var service: UserService
 
     // ==================== INSERT ====================
@@ -43,9 +50,10 @@ class UserServiceTest {
         given(repository.findByEmail("dup@email.com")).willReturn(existing)
 
         val user = User(email = "dup@email.com", password = "456", name = "Dup2")
-        val created = service.insert(user)
-
-        assertNull(created)
+        
+        assertThrows<br.mateus.authserver.exceptions.BadRequestException> {
+            service.insert(user)
+        }
     }
 
     // ==================== FIND ALL ====================
@@ -96,16 +104,19 @@ class UserServiceTest {
         user.id = 10L
         given(repository.findById(10L)).willReturn(Optional.of(user))
 
-        val result = service.delete(10L)
-        assertTrue(result)
+        service.delete(10L)
+        
+        // delete() retorna Unit, verifica apenas se não lança exceção
+        verify(repository).delete(user)
     }
 
     @Test
     fun `delete should return false when user not found`() {
         given(repository.findById(999L)).willReturn(Optional.empty())
 
-        val result = service.delete(999L)
-        assertFalse(result)
+        assertThrows<br.mateus.authserver.exceptions.NotFoundException> {
+            service.delete(999L)
+        }
     }
 
     // ==================== ADD ROLE ====================
@@ -114,8 +125,9 @@ class UserServiceTest {
     fun `addRole should return null when user not found`() {
         given(repository.findById(999L)).willReturn(Optional.empty())
 
-        val result = service.addRole(999L, "ADMIN")
-        assertNull(result)
+        assertThrows<br.mateus.authserver.exceptions.NotFoundException> {
+            service.addRole(999L, "ADMIN")
+        }
     }
 
     @Test
@@ -125,8 +137,9 @@ class UserServiceTest {
         given(repository.findById(1L)).willReturn(Optional.of(user))
         given(roleRepository.findByName("UNKNOWN")).willReturn(null)
 
-        val result = service.addRole(1L, "UNKNOWN")
-        assertNull(result)
+        assertThrows<br.mateus.authserver.exceptions.BadRequestException> {
+            service.addRole(1L, "UNKNOWN")
+        }
     }
 
     @Test
