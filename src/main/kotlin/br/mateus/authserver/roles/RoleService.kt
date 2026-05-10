@@ -1,14 +1,15 @@
 package br.mateus.authserver.roles
 
+import br.mateus.authserver.exceptions.BadRequestException
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 
 @Service
 class RoleService(val repository: RoleRepository) {
-    fun insert(role: Role): Role? {
+    fun insert(role: Role): Role {
         role.name = role.name.uppercase()
         if (repository.findByName(role.name) != null) {
-            return null
+            throw BadRequestException("Role ${role.name} already exists")
         }
         return repository.save(role)
     }

@@ -10,9 +10,10 @@ class RoleController(val service: RoleService) {
     @PostMapping
     fun insert(
         @RequestBody role: Role
-    ) = service.insert(role)
-                ?.let { ResponseEntity.status(HttpStatus.CREATED).body(it) }
-                ?: ResponseEntity.badRequest().build()
+    ): ResponseEntity<Role> {
+        val savedRole = service.insert(role)
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedRole)
+    }
 
     @GetMapping
     fun list() = service.findAll()

@@ -1,5 +1,8 @@
 package br.mateus.authserver.user
 
+import br.mateus.authserver.user.requests.CreateUserRequest
+import br.mateus.authserver.user.responses.UserResponse
+import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -11,43 +14,45 @@ class UserController(val service: UserService) {
     fun list(
         @RequestParam sortDir: String? = null,
         @RequestParam role: String? = null
-    ) = if (role != null) {
-            val users = service.findByRole(role)
-            ResponseEntity.ok(users)
-        } else {
-            SortDir.findOrNull(sortDir ?: "ASC")
-                ?.let { service.findAll(it) }
-                ?.let { ResponseEntity.ok(it) }
-                ?: ResponseEntity.badRequest().build()
-        }
+    ): ResponseEntity<*> = if (role != null) {
+        val users = service.findByRole(role)
+        ResponseEntity.ok(users.map { UserResponse(it) })
+    } else {
+        val dir = SortDir.find(sortDir ?: "ASC")
+        val users = service.findAll(dir)
+        ResponseEntity.ok(users.map { UserResponse(it) })
+    }
 
     @PostMapping
     fun insert(
-        @RequestBody user: User
-    ) = service.insert(user)
-            ?.let { ResponseEntity.status(HttpStatus.CREATED).body(it) }
-            ?: ResponseEntity.badRequest().build()
+        @Valid @RequestBody request: CreateUserRequest
+    ): ResponseEntity<UserResponse> {
+        val user = service.insert(request.toUser())
+        return ResponseEntity.status(HttpStatus.CREATED).body(UserResponse(user))
+    }
 
     @GetMapping("/{id}")
     fun getById(
         @PathVariable id: Long
-    ) = service.findByIdOrNull(id)
-            ?.let { ResponseEntity.ok(it) }
-            ?: ResponseEntity.notFound().build()
+    ): ResponseEntity<UserResponse> {
+        val user = service.findById(id)
+        return ResponseEntity.ok(UserResponse(user))
+    }
 
     @DeleteMapping("/{id}")
     fun delete(
         @PathVariable id: Long
-    ): ResponseEntity<Void> =
-        if (service.delete(id)) ResponseEntity.ok().build()
-        else ResponseEntity.notFound().build()
+    ): ResponseEntity<Void> {
+        service.delete(id)
+        return ResponseEntity.ok().build()
+    }
 
     @PutMapping("/{id}/roles/{role}")
     fun grant(
         @PathVariable id: Long,
         @PathVariable role: String
-    ): ResponseEntity<Void> =
+    ): ResponseEntity<Void> {
         service.addRole(id, role)
-            ?.let { if (it) ResponseEntity.ok().build() else ResponseEntity.noContent().build() }
-            ?: ResponseEntity.badRequest().build()
+        return ResponseEntity.ok().build()
+    }
 }
